@@ -1,0 +1,76 @@
+-- This file has been generated from package.yaml by hpack version 0.28.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: d83560e6bebb0cb199db4f38ad7f55b188c5033119f622c7d3ff3cdcdcab79d6
+
+name:           Hecaf
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/Handora/Hecaf#readme>
+homepage:       https://github.com/Handora/Hecaf#readme
+bug-reports:    https://github.com/Handora/Hecaf/issues
+author:         Qian Chen
+maintainer:     qcdsr970209@gmail.com
+copyright:      Handora
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+extra-source-files:
+    ChangeLog.md
+    README.md
+    src/Parser.y
+    src/Scanner.x
+    
+source-repository head
+  type: git
+  location: https://github.com/Handora/Hecaf
+
+library
+  exposed-modules:
+      CLI
+    , Configuration  
+    , Configuration.Types
+    , Parser
+    , Scanner
+  other-modules:
+      Paths_Hecaf
+  hs-source-dirs:
+      src
+  build-depends:
+      base >=4.7 && <5
+    , array
+    , split
+    , transformers
+    , pretty-show	
+  build-tools:
+      alex
+    , happy
+  default-language: Haskell2010
+
+executable Hecaf-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_Hecaf
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Hecaf
+    , base >=4.7 && <5
+    , transformers
+    , pretty-show
+  default-language: Haskell2010
+
+test-suite Hecaf-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_Hecaf
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Hecaf
+    , base >=4.7 && <5
+  default-language: Haskell2010

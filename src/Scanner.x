@@ -32,9 +32,27 @@ $alpha = [a-zA-Z]
 $white2 = $white # \f -- we want the scanner to error on '\f' (form feed) characters
 
 tokens :-
-  $white2+ ;
-  "//".*   ;                     -- comment
+  $white2+ ;                     -- space
+  "//".*   ;                     -- comment1
+  "/*".*"*/";                    --comment2
+
+  -- Keyword Token
   class    { \posn s -> scannedToken posn $ Keyword s }
+  bool     { \posn s -> scannedToken posn $ Keyword s }
+  break     { \posn s -> scannedToken posn $ Keyword s }
+  import     { \posn s -> scannedToken posn $ Keyword s }
+  continue     { \posn s -> scannedToken posn $ Keyword s }
+  if     { \posn s -> scannedToken posn $ Keyword s }
+  else     { \posn s -> scannedToken posn $ Keyword s }
+  true     { \posn s -> scannedToken posn $ Keyword s }
+  false     { \posn s -> scannedToken posn $ Keyword s }
+  for     { \posn s -> scannedToken posn $ Keyword s }
+  while     { \posn s -> scannedToken posn $ Keyword s }
+  int     { \posn s -> scannedToken posn $ Keyword s }
+  return     { \posn s -> scannedToken posn $ Keyword s }
+  len     { \posn s -> scannedToken posn $ Keyword s }
+  void     { \posn s -> scannedToken posn $ Keyword s }
+
   \{       { \posn _ -> scannedToken posn LCurly }
   \}       { \posn _ -> scannedToken posn RCurly }
   $alpha+  { \posn s -> scannedToken posn $ Identifier s }
@@ -144,16 +162,24 @@ data ScannedToken = ScannedToken { line :: Int
                                  } deriving (Eq)
 
 -- | A token.
-data Token = Keyword String
+data Token = Keyword
            | Identifier String
            | LCurly
            | RCurly
            deriving (Eq)
+
+data Keyword = Bool
+             | Break
+             | Import
+             | Continue
+             | Else
+             |
+
 instance Show Token where
-  show (Keyword k) = k
   show (Identifier s) = "IDENTIFIER " ++ s
   show LCurly = "{"
   show RCurly = "}"
+  show k = k
 
 {-| Smart constructor to create a 'ScannedToken' by extracting the line and
 column numbers from an 'AlexPosn'. -}

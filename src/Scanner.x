@@ -28,41 +28,119 @@ import qualified Data.Bits
 
 ----------------------------------- Tokens ------------------------------------
 
-$alpha = [a-zA-Z]
+$alphaWithUnderscore = [a-zA-Z]
+$digit = [0-9]
 $white2 = $white # \f -- we want the scanner to error on '\f' (form feed) characters
+$escapes = [b t n \' \\ \"]  
 
 tokens :-
-  $white2+ ;                     -- space
-  "//".*   ;                     -- comment1
-  "/*".*"*/";                    --comment2
+  -- space
+  $white2+ ;
+  -- comment1
+  "//".*   ;
+  -- comment2(errors)
+  "/*"(.|\n)*"*/";
 
+  -- Symbols
+  \+ { \posn _ -> scannedToken posn $ Sym "+"}
+  \- { \posn _ -> scannedToken posn $ Sym "-"}
+  \* { \posn _ -> scannedToken posn $ Sym "*"}
+  \/ { \posn _ -> scannedToken posn $ Sym "/"}
+  \% { \posn _ -> scannedToken posn $ Sym "%"}
+  == { \posn _ -> scannedToken posn $ Sym "=="}
+  != { \posn _ -> scannedToken posn $ Sym "!="}
+  \> { \posn _ -> scannedToken posn $ Sym ">"}
+  \< { \posn _ -> scannedToken posn $ Sym "<"}
+  = { \posn _ -> scannedToken posn $ Sym "="}
+  && { \posn _ -> scannedToken posn $ Sym "&&"}
+  \|\| { \posn _ -> scannedToken posn $ Sym "||"}
+  \+= { \posn _ -> scannedToken posn $ Sym "+="}
+  \-= { \posn _ -> scannedToken posn $ Sym "-="}
+  -- TODO(Handora): *= and so on
+
+  -- string literal
+  \" ((\\ escapes)|($printable # [\\ \"]))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
+
+  \'(\\ escapes)|($printable # [\\ \'])\' { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
+
+  -- integer
+  (\+|\-)? $digit+  { \posn s -> scannedToken posn $ IntLiteral s }
+
+  -- hex integer
+  0x ($digit | [a-f])+  { \posn s -> scannedToken posn $ IntLiteral s }
+  
+  -- identifier
+  $alphaWithUnderscore($alphaWithUnderscore|$digit)*  { \posn s -> scannedToken posn $ Identifier s }
   -- Keyword Token
-  class    { \posn s -> scannedToken posn $ Keyword s }
-  bool     { \posn s -> scannedToken posn $ Keyword s }
-  break     { \posn s -> scannedToken posn $ Keyword s }
-  import     { \posn s -> scannedToken posn $ Keyword s }
-  continue     { \posn s -> scannedToken posn $ Keyword s }
-  if     { \posn s -> scannedToken posn $ Keyword s }
-  else     { \posn s -> scannedToken posn $ Keyword s }
-  true     { \posn s -> scannedToken posn $ Keyword s }
-  false     { \posn s -> scannedToken posn $ Keyword s }
-  for     { \posn s -> scannedToken posn $ Keyword s }
-  while     { \posn s -> scannedToken posn $ Keyword s }
-  int     { \posn s -> scannedToken posn $ Keyword s }
-  return     { \posn s -> scannedToken posn $ Keyword s }
-  len     { \posn s -> scannedToken posn $ Keyword s }
-  void     { \posn s -> scannedToken posn $ Keyword s }
+  class    { \posn _ -> scannedToken posn $ Class }
+  bool     { \posn _ -> scannedToken posn $ DataType "bool" }
+  break     { \posn s -> scannedToken posn $ Break }
+  import     { \posn s -> scannedToken posn $ Import }
+  continue     { \posn s -> scannedToken posn $ Continue }
+  if     { \posn s -> scannedToken posn $ If }
+  else     { \posn s -> scannedToken posn $ Else }
+  true     { \posn s -> scannedToken posn $ BoolLiteral True }
+  false     { \posn s -> scannedToken posn $ BoolLiteral False }
+  for     { \posn s -> scannedToken posn $ For }
+  while     { \posn s -> scannedToken posn $ While }
+  int     { \posn s -> scannedToken posn $ DataType "int" }
+  return     { \posn s -> scannedToken posn $ Return }
+  len     { \posn s -> scannedToken posn $ Len }
+  void     { \posn s -> scannedToken posn $ Void }
 
   \{       { \posn _ -> scannedToken posn LCurly }
   \}       { \posn _ -> scannedToken posn RCurly }
-  $alpha+  { \posn s -> scannedToken posn $ Identifier s }
+  
 
 
 ----------------------------- Representing tokens -----------------------------
 
 {
 
+-- | A token.
+data Token = BoolLiteral Bool
+           | StringLiteral String
+           | IntLiteral String
+           | CharLiteral Char
+           | Identifier String
+           | Sym String
+           | LCurly
+           | RCurly
+           | DataType String
+           | Break
+           | Import
+           | Continue
+           | Else
+           | For
+           | While
+           | If
+           | Return
+           | Len
+           | Void
+           | Class
+           deriving (Eq)
 
+instance Show Token where
+  show (Identifier s) = "IDENTIFIER " ++ s
+  show LCurly = "{"
+  show RCurly = "}"
+  show (BoolLiteral b) = "BOOLLITERAL " ++ show b
+  show (DataType s) = "DATATYPE" ++ show s
+  show Break = "break"
+  show Import = "import"
+  show Continue = "continue"
+  show Else = "else"
+  show For = "for"
+  show While = "while"
+  show If = "if"
+  show Return = "return"
+  show Len = "len"
+  show Void = "void"
+  show Class = "class"
+  show (StringLiteral s) = s
+  show (CharLiteral c) = [c]
+  show (IntLiteral i) = i
+  show (Sym s) = s
 
 -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
@@ -161,26 +239,6 @@ data ScannedToken = ScannedToken { line :: Int
                                  , extractRawToken :: Token
                                  } deriving (Eq)
 
--- | A token.
-data Token = Keyword
-           | Identifier String
-           | LCurly
-           | RCurly
-           deriving (Eq)
-
-data Keyword = Bool
-             | Break
-             | Import
-             | Continue
-             | Else
-             |
-
-instance Show Token where
-  show (Identifier s) = "IDENTIFIER " ++ s
-  show LCurly = "{"
-  show RCurly = "}"
-  show k = k
-
 {-| Smart constructor to create a 'ScannedToken' by extracting the line and
 column numbers from an 'AlexPosn'. -}
 scannedToken :: AlexPosn -> Token -> ScannedToken
@@ -202,4 +260,17 @@ formatTokenOrError (Left err) = Left err
 formatTokenOrError (Right tok) = Right $ unwords [ show $ line tok
                                                  , show $ extractRawToken tok
                                                  ]
+
+escapeString :: String -> String
+escapeString [] = []
+escapeString ('\\':x:xs) = (convert x) : escapeString xs
+escapeString (x:xs) = x : escapeString xs
+
+convert :: Char -> Char
+convert 't' = '\t'
+convert 'n' = '\n'
+convert 'b' = '\b'
+convert x = x
+
+
 }

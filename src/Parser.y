@@ -29,10 +29,22 @@ import Scanner (ScannedToken(..), Token(..))
 %tokentype { ScannedToken }
 
 %token
-  class      { ScannedToken _ _ (Keyword "class") }
+  class      { ScannedToken _ _ Class }
+  type       { ScannedToken _ _ (DataType $$) }
+  break      { ScannedToken _ _ Break }
+  import     { ScannedToken _ _ Import }
+  continue   { ScannedToken _ _ Continue }
+  if         { ScannedToken _ _ If }
+  else       { ScannedToken _ _ Else }
+  for        { ScannedToken _ _ For }
+  while      { ScannedToken _ _ While }
+  return     { ScannedToken _ _ Return }
+  len        { ScannedToken _ _ Len }
+  void       { ScannedToken _ _ Void }
   identifier { ScannedToken _ _ (Identifier $$) }
   '{'        { ScannedToken _ _ LCurly }
   '}'        { ScannedToken _ _ RCurly }
+  
 
 
 %% -------------------------------- Grammar -----------------------------------

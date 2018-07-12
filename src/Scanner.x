@@ -300,6 +300,4 @@ unescapeString ('\n':xs) = '\\' : 'n' : unescapeString xs
 unescapeString ('\t':xs) = '\\' : 't' : unescapeString xs
 unescapeString ('\b':xs) = '\\' : 'b' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
-
-
 }

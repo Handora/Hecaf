@@ -29,33 +29,41 @@ import Scanner (ScannedToken(..), Token(..))
 %tokentype { ScannedToken }
 
 %token
-  class      { ScannedToken _ _ Class }
-  type       { ScannedToken _ _ (DataType $$) }
+  "class"      { ScannedToken _ _ Class }
+  "type"       { ScannedToken _ _ (DataType _) }
   break      { ScannedToken _ _ Break }
-  import     { ScannedToken _ _ Import }
+  "import"     { ScannedToken _ _ Import }
   continue   { ScannedToken _ _ Continue }
-  if         { ScannedToken _ _ If }
-  else       { ScannedToken _ _ Else }
+  "if"         { ScannedToken _ _ If }
+  "else"       { ScannedToken _ _ Else }
   for        { ScannedToken _ _ For }
   while      { ScannedToken _ _ While }
   return     { ScannedToken _ _ Return }
   len        { ScannedToken _ _ Len }
   void       { ScannedToken _ _ Void }
-  identifier { ScannedToken _ _ (Identifier $$) }
-  '{'        { ScannedToken _ _ LCurly }
-  '}'        { ScannedToken _ _ RCurly }
+  identifier { ScannedToken _ _ (Identifier _) }
+  "{"        { ScannedToken _ _ LCurly }
+  "}"        { ScannedToken _ _ RCurly }
+  ";"        { ScannedYoken _ _ (Sym ";") } 
   
 
 
 %% -------------------------------- Grammar -----------------------------------
 
-Program : class identifier '{' '}' { Program $2 }
+Program : ImportDecls FieldDecls MethodDecls { Program $1 $2 $3 }
+
+ImportDecl : "import" identifier ";" { ImportDecl $2 }
+
+FieldDecl : "type" CommaDecls ";" { FieldDecl $1 $2 }
+
 
 
 ----------------------------------- Haskell -----------------------------------
-{
-data Program = Program { className :: String
-                       } deriving (Eq)
+
+data Program = Program ImportDecls FieldDecls MethodDecls deriving (Show)
+data ImportDecl = ImportDecl String deriving (Show)
+newtype ImportDecls = [ImportDecls]
+  
 
 parseError :: [ScannedToken] -> Either String a
 parseError [] = Left "unexpected EOF"

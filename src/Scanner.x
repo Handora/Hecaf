@@ -28,10 +28,11 @@ import qualified Data.Bits
 
 ----------------------------------- Tokens ------------------------------------
 
-$alphaWithUnderscore = [a-zA-Z]
+
 $digit = [0-9]
 $white2 = $white # \f -- we want the scanner to error on '\f' (form feed) characters
-$escapes = [b t n \' \\ \"]  
+$escapes = [b t n \' \\ \"]
+$alpha = [a-zA-Z_]             
 
 tokens :-
   -- space
@@ -56,25 +57,31 @@ tokens :-
   \|\| { \posn _ -> scannedToken posn $ Sym "||"}
   \+= { \posn _ -> scannedToken posn $ Sym "+="}
   \-= { \posn _ -> scannedToken posn $ Sym "-="}
+  \- {\posn _ -> scannedToken posn $ Sym "-"}
+  \? {\posn _ -> scannedToken posn $ Sym "?"}
+  \! {\posn _ -> scannedToken posn $ Sym "!"}
+  \; {\posn _ -> scannedToken posn $ Sym ";"}
+  \, {\posn _ -> scannedToken posn $ Sym ","}
+  
+  
   -- TODO(Handora): *= and so on
 
   -- string literal
-  \" ((\\ escapes)|($printable # [\\ \"]))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
+  \" ((\\ $escapes)|($printable # [\\ \"]))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
 
-  \'(\\ escapes)|($printable # [\\ \'])\' { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
+  "'" ((\\ $escapes) | ($printable # [\\ \'])) "'" { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
 
   -- integer
   (\+|\-)? $digit+  { \posn s -> scannedToken posn $ IntLiteral s }
 
   -- hex integer
-  0x ($digit | [a-f])+  { \posn s -> scannedToken posn $ IntLiteral s }
+  0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral s }
   
-  -- identifier
-  $alphaWithUnderscore($alphaWithUnderscore|$digit)*  { \posn s -> scannedToken posn $ Identifier s }
-  -- Keyword Token
+
+-- Keyword Token
   class    { \posn _ -> scannedToken posn $ Class }
   bool     { \posn _ -> scannedToken posn $ DataType "bool" }
-  break     { \posn s -> scannedToken posn $ Break }
+  break     { \posn _ -> scannedToken posn $ Break }
   import     { \posn s -> scannedToken posn $ Import }
   continue     { \posn s -> scannedToken posn $ Continue }
   if     { \posn s -> scannedToken posn $ If }
@@ -88,10 +95,16 @@ tokens :-
   len     { \posn s -> scannedToken posn $ Len }
   void     { \posn s -> scannedToken posn $ Void }
 
+  -- identifier
+  $alpha($alpha|$digit)*  { \posn s -> scannedToken posn $ Identifier s }
+
+
   \{       { \posn _ -> scannedToken posn LCurly }
   \}       { \posn _ -> scannedToken posn RCurly }
-  
-
+  \[       { \posn _ -> scannedToken posn LBracket }
+  \]       { \posn _ -> scannedToken posn RBracket }
+  \(       { \posn _ -> scannedToken posn LParenthes }
+  \)       { \posn _ -> scannedToken posn RParenthes }
 
 ----------------------------- Representing tokens -----------------------------
 
@@ -118,6 +131,10 @@ data Token = BoolLiteral Bool
            | Len
            | Void
            | Class
+           | LParenthes
+           | RParenthes
+           | LBracket
+           | RBracket
            deriving (Eq)
 
 instance Show Token where
@@ -125,7 +142,7 @@ instance Show Token where
   show LCurly = "{"
   show RCurly = "}"
   show (BoolLiteral b) = "BOOLLITERAL " ++ show b
-  show (DataType s) = "DATATYPE" ++ show s
+  show (DataType s) = "DATATYPE " ++ show s
   show Break = "break"
   show Import = "import"
   show Continue = "continue"
@@ -137,10 +154,15 @@ instance Show Token where
   show Len = "len"
   show Void = "void"
   show Class = "class"
-  show (StringLiteral s) = s
-  show (CharLiteral c) = [c]
-  show (IntLiteral i) = i
+  show (StringLiteral s) = "STRINGLITERAL \"" ++ escapeString s ++ "\""
+  show (CharLiteral c) = "CHARLITERAL '" ++ unescapeString [c] ++ "'"
+  show (IntLiteral i) = "INTLITERAL " ++ i
   show (Sym s) = s
+  show LBracket = "["
+  show RBracket = "]"
+  show LParenthes = "("
+  show RParenthes = ")"
+
 
 -- | Encode a Haskell String to a list of Word8 values, in UTF8 format.
 utf8Encode :: Char -> [Word8]
@@ -271,6 +293,13 @@ convert 't' = '\t'
 convert 'n' = '\n'
 convert 'b' = '\b'
 convert x = x
+
+unescapeString :: String -> String
+unescapeString [] = []
+unescapeString ('\n':xs) = '\\' : 'n' : unescapeString xs
+unescapeString ('\t':xs) = '\\' : 't' : unescapeString xs
+unescapeString ('\b':xs) = '\\' : 'b' : unescapeString xs
+unescapeString (x:xs) = x : unescapeString xs
 
 
 }

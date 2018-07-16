@@ -1,3 +1,4 @@
+
 -- Scanner -- Decaf scanner                                     -*- haskell -*-
 -- Copyright (C) 2013  Benjamin Barenblat <bbaren@mit.edu>
 --
@@ -25,7 +26,6 @@ import Data.Char (ord)
 import qualified Data.Bits
 }
 
-
 ----------------------------------- Tokens ------------------------------------
 
 
@@ -43,6 +43,10 @@ tokens :-
   "/*"(.|\n)*"*/";
 
   -- Symbols
+  \+= { \posn _ -> scannedToken posn $ Sym "+="}
+  \-= { \posn _ -> scannedToken posn $ Sym "-="}
+  \++ { \posn _ -> scannedToken posn $ Sym "++"}
+  \-- { \posn _ -> scannedToken posn $ Sym "--"}  
   \+ { \posn _ -> scannedToken posn $ Sym "+"}
   \- { \posn _ -> scannedToken posn $ Sym "-"}
   \* { \posn _ -> scannedToken posn $ Sym "*"}
@@ -55,9 +59,6 @@ tokens :-
   = { \posn _ -> scannedToken posn $ Sym "="}
   && { \posn _ -> scannedToken posn $ Sym "&&"}
   \|\| { \posn _ -> scannedToken posn $ Sym "||"}
-  \+= { \posn _ -> scannedToken posn $ Sym "+="}
-  \-= { \posn _ -> scannedToken posn $ Sym "-="}
-  \- {\posn _ -> scannedToken posn $ Sym "-"}
   \? {\posn _ -> scannedToken posn $ Sym "?"}
   \! {\posn _ -> scannedToken posn $ Sym "!"}
   \; {\posn _ -> scannedToken posn $ Sym ";"}
@@ -72,10 +73,10 @@ tokens :-
   "'" ((\\ $escapes) | ($printable # [\\ \'])) "'" { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
 
   -- integer
-  (\+|\-)? $digit+  { \posn s -> scannedToken posn $ IntLiteral s }
+  (\+|\-)? $digit+  { \posn s -> scannedToken posn $ IntLiteral $ str2Int s }
 
   -- hex integer
-  0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral s }
+  0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral (read s) }
   
 
 -- Keyword Token
@@ -113,7 +114,7 @@ tokens :-
 -- | A token.
 data Token = BoolLiteral Bool
            | StringLiteral String
-           | IntLiteral String
+           | IntLiteral Int
            | CharLiteral Char
            | Identifier String
            | Sym String
@@ -156,7 +157,7 @@ instance Show Token where
   show Class = "class"
   show (StringLiteral s) = "STRINGLITERAL \"" ++ escapeString s ++ "\""
   show (CharLiteral c) = "CHARLITERAL '" ++ unescapeString [c] ++ "'"
-  show (IntLiteral i) = "INTLITERAL " ++ i
+  show (IntLiteral i) = "INTLITERAL " ++ show i
   show (Sym s) = s
   show LBracket = "["
   show RBracket = "]"
@@ -300,4 +301,8 @@ unescapeString ('\n':xs) = '\\' : 'n' : unescapeString xs
 unescapeString ('\t':xs) = '\\' : 't' : unescapeString xs
 unescapeString ('\b':xs) = '\\' : 'b' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
+
+str2Int :: String -> Int
+str2Int '+':s = read s
+str2Int s = read s
 }

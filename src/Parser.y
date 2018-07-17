@@ -29,7 +29,6 @@ import Scanner (ScannedToken(..), Token(..))
 %tokentype { ScannedToken }
 
 %token
-  "class"    { ScannedToken _ _ Class }
   int_t      { ScannedToken _ _ (DataType "int") }
   bool_t     { ScannedToken _ _ (DataType "bool") }
   string     { ScannedToken _ _ (StringLiteral $$) }
@@ -41,37 +40,44 @@ import Scanner (ScannedToken(..), Token(..))
   for        { ScannedToken _ _ For }
   while      { ScannedToken _ _ While }
   return     { ScannedToken _ _ Return }
-  break      { ScannedToken _ _ Break }
-  continue   { ScannedToken _ _ Continue }
   len        { ScannedToken _ _ Len }
-  void       { ScannedToken _ _ Void }
   identifier { ScannedToken _ _ (Identifier $$) }
   "{"        { ScannedToken _ _ LCurly }
   "}"        { ScannedToken _ _ RCurly }
-  ";"        { ScannedYoken _ _ (Sym ";") }
+  ";"        { ScannedToken _ _ (Sym ";") }
   "["        { ScannedToken _ _ LBracket }
   "]"        { ScannedToken _ _ RBracket }
   "("        { ScannedToken _ _ LParenthes }
   ")"        { ScannedToken _ _ RParenthes }
   int        { ScannedToken _ _ (IntLiteral $$) }
   bool       { ScannedToken _ _ (BoolLiteral $$) }
-  ","        { ScannedYoken _ _ (Sym ",") }
-  void       { ScannedYoken _ _ Void }
-  "++"       { ScannedYoken _ _ (Sym "++") }
-  "--"       { ScannedYoken _ _ (Sym "--") }
-  "+="       { ScannedYoken _ _ (Sym "+=") }
-  "-="       { ScannedYoken _ _ (Sym "-=") }
-  "-"        { ScannedYoken _ _ (Sym "-") }
-  "+"        { ScannedYoken _ _ (Sym "+") }
-  "="        { ScannedYoken _ _ (Sym "=") }
-  "/"        { ScannedYoken _ _ (Sym "/") }
-  "%"        { ScannedYoken _ _ (Sym "%") }
-  "&&"        { ScannedYoken _ _ (Sym "&&") }
-  "||"        { ScannedYoken _ _ (Sym "||") }
+  ","        { ScannedToken _ _ (Sym ",") }
+  void       { ScannedToken _ _ Void }
+  "++"       { ScannedToken _ _ (Sym "++") }
+  "--"       { ScannedToken _ _ (Sym "--") }
+  "+="       { ScannedToken _ _ (Sym "+=") }
+  "-="       { ScannedToken _ _ (Sym "-=") }
+  "-"        { ScannedToken _ _ (Sym "-") }
+  "+"        { ScannedToken _ _ (Sym "+") }
+  "="        { ScannedToken _ _ (Sym "=") }
+  "/"        { ScannedToken _ _ (Sym "/") }
+  "*"        { ScannedToken _ _ (Sym "*") }
+  "!"        { ScannedToken _ _ (Sym "!") }  
+  "%"        { ScannedToken _ _ (Sym "%") }
+  "&&"       { ScannedToken _ _ (Sym "&&") }
+  "||"       { ScannedToken _ _ (Sym "||") }
+  "?"        { ScannedToken _ _ (Sym "?") }
+  ":"        { ScannedToken _ _ (Sym ":") }
+  "=="       { ScannedToken _ _ (Sym "==") }
+  "!="       { ScannedToken _ _ (Sym "!=") }
+  ">"        { ScannedToken _ _ (Sym ">") }
+  "<"        { ScannedToken _ _ (Sym "<") }
+  ">="       { ScannedToken _ _ (Sym ">=") }
+  "<="       { ScannedToken _ _ (Sym "<=") }
 
+%right "?" ":"
 
 %% -------------------------------- Grammar -----------------------------------
-
 Program : ImportDecls FieldsDecls MethodDecls { Program $1 $2 $3 }
 
 ImportDecl : "import" identifier ";" { ImportDecl $2 }
@@ -86,21 +92,21 @@ CommaDecls : FieldDecl { [$1] }
            | FieldDecl "," { [$1] }
 
 MethodDecl : Type identifier "(" ParamDecls ")" Block { TMethodDecl $1 $2 $4 $6 }
-           | Void identifier "(" ParamDecls ")" Block { VMethodDecl $2 $4 $6 }
+           | void identifier "(" ParamDecls ")" Block { VMethodDecl $2 $4 $6 }
 
 ParamDecl : Type identifier { ParamDecl $1 $2 }
 
 ParamDecls : ParamDecl { [$1] }
            | ParamDecl "," ParamDecls { $1 : $3 }
 
-Block : "{" FieldDecls Statements "}" { Field $2 $ 3 }
+Block : "{" FieldsDecls Statements "}" { Block $2 $3 }
 
 Statement : Location AssignExpr ";" { AssignStatement $1 $2 }
-          | MethodCall ";" { MethodCallStatement $1 $2 }
+          | MethodCall ";" { MethodCallStatement $1 }
           | "if" "(" Expr ")" Block { IfStatement $3 $5 Nothing }
-          | "if" "(" Expr ")" Block else Block { IfStatement $3 $5 (Just $7) }
-          | for "(" identifier "=" Expr ";" Expr ";" VarChange ")" Block
-              { ForStatement $3 $5 $7 $9 $11 }
+          | "if" "(" Expr ")" Block "else" Block { IfStatement $3 $5 (Just $7) }
+          | for "(" identifier "=" Expr ";" Expr ";" Location VarChanged ")" Block
+              { ForStatement $3 $5 $7 $9 $10 $12 }
           | while "(" Expr ")" Block { WhileStatement $3 $5 }
           | return ";" { ReturnStatement Nothing }
           | return Expr ";" { ReturnStatement $ Just $2 }
@@ -121,38 +127,30 @@ MethodCall : identifier "(" MethodArgs ")" { MethodCall $1 $3 }
 MethodArgs : MethodArg { [$1] }
            | MethodArg "," MethodArgs { $1 : $3 }
 
-MethodArg : Expr { MExpr $1 }
-          | string { MString $1 }
+MethodArg : Expr { MethodArg $1 }
 
 VarChanged : "+=" Expr { VInc $2 }
            | "-=" Expr { VDec $2 }
            | "++" { VInc1 }
            | "--" { VDec1 }
 
-Statements : {- empty -} { [] }
+Statements : Statement { [$1] }
            | Statement Statements { $1 : $2 }
 
-ImportDecls : {- empty -} { [] }
+ImportDecls : ImportDecl { [$1] }
             | ImportDecl ImportDecls { $1 : $2 }
 
-FieldsDecls : {- empty -} { [] }
-            | FieldsDecl FieldsDecls { $1 : $2 }
+FieldsDecls : FieldsDecl { [$1] }
+            | FieldsDecls FieldsDecl { $2 ++ [$1] }
 
-MethodDecls : {- empty -} { [] }
+MethodDecls : MethodDecl { [$1] }
             | MethodDecl MethodDecls { $1 : $2 }
 
 Type : int_t { HInt }
      | bool_t { HBool }
 
--- Expr : Loction { ELoc $1 }
---      | MethodCall { ECall $1 }
---      | int { EILit $1 }
---      | bool { EBLit $1 }
---      | string { ESLit $1 }
---      | len "(" identifier ")" { ELen $3 }
---      | Expr
-Expr0 : Expr0 "?" Expr0 ":" Expr0 { TernaryExpr $1 $3 $5}
-      | Expr1 { Expr1 $1 }
+Expr : Expr "?" Expr ":" Expr { TrinaryExpr $1 $3 $5}
+     | Expr1 { Expr1 $1 }
 
 Expr1 : Expr1 "||" Expr2 { OrExpr $1 $3 }
       | Expr2 { Expr2 $1 }
@@ -174,7 +172,7 @@ Expr5 : Expr5 "+" Expr6 { AddExpr $1 $3 }
       | Expr5 "-" Expr6 { MinusExpr $1 $3 }
       | Expr6 { Expr6 $1 }
 
-Expr6 : Expr6 "*" Expr7 { MutipleExpr $1 $3 }
+Expr6 : Expr6 "*" Expr7 { MultipleExpr $1 $3 }
       | Expr6 "/" Expr7 { DivideExpr $1 $3 }
       | Expr6 "%" Expr7 { ModuloExpr $1 $3 }
       | Expr7 { Expr7 $1 }
@@ -183,18 +181,23 @@ Expr7 : "-" Expr7 { NegExpr $2 }
       | "!" Expr7 { NotExpr $2 }
       | Expr8 { Expr8 $1 }
 
-Expr8 : Location { LocExpr $1 }
+Expr8 : len Expr9 { LenExpr $2 }
+      | Expr9 { Expr9 $1 }
+
+Expr9 : Location { LocExpr $1 }
       | MethodCall { CallExpr $1 }
       | int { IntExpr $1 }
       | bool { BoolExpr $1 }
       | string { StringExpr $1 }
-      | len Expr0 { LenExpr $2 }
-      | "(" Expr0 ")" { CuryExpr %2 }
+      | "(" Expr ")" { CuryExpr $2 }
 
 ----------------------------------- Haskell -----------------------------------
 
-data Program = Program [ImportDecl] [FieldsDecl] [MethodDecl] deriving (Show)
-data ImportDecl = ImportDecl String deriving (Show)
+{
+data Program = Program [ImportDecl] [FieldsDecl] [MethodDecl]
+               deriving (Show)
+data ImportDecl = ImportDecl String
+                  deriving (Show)
 data FieldsDecl = FieldsDecl HType [FieldDecl] deriving (Show)
 data FieldDecl = VarDecl String
                | ArrayDecl String Int
@@ -209,7 +212,7 @@ data Block = Block [FieldsDecl] [Statement] deriving (Show)
 data Statement = AssignStatement Location AssignExpr
                | MethodCallStatement MethodCall
                | IfStatement Expr Block (Maybe Block)
-               | ForStatement Expr Expr Location VarChanged Block
+               | ForStatement String Expr Expr Location VarChanged Block
                | WhileStatement Expr Block
                | ReturnStatement (Maybe Expr)
                | BreakStatement
@@ -227,8 +230,8 @@ data AssignExpr = HInc Expr
                 | HDec1
                 deriving (Show)
 
-data MethodCall = MethodCall [MethodArg]
-                | deriving (Show)
+data MethodCall = MethodCall String [MethodArg]
+                deriving (Show)
 
 data VarChanged = VDec Expr
                 | VInc Expr
@@ -236,19 +239,14 @@ data VarChanged = VDec Expr
                 | VInc1
                 deriving (Show)
 
-data MethodArg = MExpr Expr
-               | MString String
+data MethodArg = MethodArg Expr
                deriving (Show)
 
--- newtype MethodDecls = MethodDecls [MethodDecl] deriving (Show)
--- newtype ImportDecls = ImportDecls [ImportDecl] deriving (Show)
--- newtype FieldsDecls = FieldsDecls [FieldsDecl] deriving (Show)  
 data HType = HInt
           | HBool
           deriving (Show)
-data HIdentifier = HIdentifier String deriving (Show)
 
-data Expr0 = TrinaryExpr Expr0 Expr0 Expr0
+data Expr = TrinaryExpr Expr Expr Expr
            | Expr1 Expr1
            deriving (Show)
 
@@ -266,9 +264,9 @@ data Expr3 = EqualExpr Expr3 Expr4
            deriving (Show)
 
 data Expr4 = LessExpr Expr4 Expr5
-           | LessThenExpr Expr4 Expr5
+           | LessThanExpr Expr4 Expr5
            | LargerExpr Expr4 Expr5
-           | LargerThenExpr Expr4 Expr5
+           | LargerThanExpr Expr4 Expr5
            | Expr5 Expr5
            deriving (Show)
 
@@ -288,13 +286,17 @@ data Expr7 = NegExpr Expr7
            | Expr8 Expr8
            deriving (Show)
 
-data Expr8 = LocExpr Location
+data Expr8 = LenExpr Expr9
+           | Expr9 Expr9
+           deriving (Show)
+
+data Expr9 = LocExpr Location
            | CallExpr MethodCall
            | IntExpr Int
            | BoolExpr Bool
            | StringExpr String
-           | LenExpr Expr0
-           | CuryExpr Expr0
+           | CuryExpr Expr
+           deriving (Show)
 
 parseError :: [ScannedToken] -> Either String a
 parseError [] = Left "unexpected EOF"
@@ -308,4 +310,5 @@ parseError toks =
         lineNo = Scanner.line firstBadToken
         columnNo = Scanner.column firstBadToken
         badTokenText = concatMap (show . extractRawToken) toks
+
 }

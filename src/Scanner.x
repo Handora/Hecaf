@@ -45,8 +45,8 @@ tokens :-
   -- Symbols
   \+= { \posn _ -> scannedToken posn $ Sym "+="}
   \-= { \posn _ -> scannedToken posn $ Sym "-="}
-  \++ { \posn _ -> scannedToken posn $ Sym "++"}
-  \-- { \posn _ -> scannedToken posn $ Sym "--"}  
+  \+\+ { \posn _ -> scannedToken posn $ Sym "++"}
+  \-\- { \posn _ -> scannedToken posn $ Sym "--"}  
   \+ { \posn _ -> scannedToken posn $ Sym "+"}
   \- { \posn _ -> scannedToken posn $ Sym "-"}
   \* { \posn _ -> scannedToken posn $ Sym "*"}
@@ -80,7 +80,6 @@ tokens :-
   
 
 -- Keyword Token
-  class    { \posn _ -> scannedToken posn $ Class }
   bool     { \posn _ -> scannedToken posn $ DataType "bool" }
   break     { \posn _ -> scannedToken posn $ Break }
   import     { \posn s -> scannedToken posn $ Import }
@@ -303,6 +302,6 @@ unescapeString ('\b':xs) = '\\' : 'b' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
 
 str2Int :: String -> Int
-str2Int '+':s = read s
+str2Int ('+':s) = read s
 str2Int s = read s
 }

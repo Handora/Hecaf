@@ -32,6 +32,7 @@ import Scanner (ScannedToken(..), Token(..))
   int_t      { ScannedToken _ _ (DataType "int") }
   bool_t     { ScannedToken _ _ (DataType "bool") }
   string     { ScannedToken _ _ (StringLiteral $$) }
+  char       { ScannedToken _ _ (CharLiteral $$) }  
   break      { ScannedToken _ _ Break }
   "import"   { ScannedToken _ _ Import }
   continue   { ScannedToken _ _ Continue }
@@ -89,10 +90,12 @@ FieldDecl : identifier { VarDecl $1 }
 
 CommaDecls : FieldDecl { [$1] }
            | FieldDecl "," CommaDecls { $1 : $3 }
-           | FieldDecl "," { [$1] }
+           
 
 MethodDecl : Type identifier "(" ParamDecls ")" Block { TMethodDecl $1 $2 $4 $6 }
+           | Type identifier "(" ")" Block { TMethodDecl $1 $2 [] $5 } 
            | void identifier "(" ParamDecls ")" Block { VMethodDecl $2 $4 $6 }
+           | void identifier "(" ")" Block { VMethodDecl $2 [] $5 }
 
 ParamDecl : Type identifier { ParamDecl $1 $2 }
 
@@ -118,11 +121,12 @@ Location : identifier { VarLocation $1 }
 
 AssignExpr : "+=" Expr { HInc $2 }
            | "-=" Expr { HDec $2 }
-           | "-" Expr { HAssign $2 }
+           | "=" Expr { HAssign $2 }
            | "++" { HInc1 }
            | "--" { HDec1 }
 
 MethodCall : identifier "(" MethodArgs ")" { MethodCall $1 $3 }
+           | identifier "(" ")" { MethodCall $1 [] }
 
 MethodArgs : MethodArg { [$1] }
            | MethodArg "," MethodArgs { $1 : $3 }
@@ -134,16 +138,16 @@ VarChanged : "+=" Expr { VInc $2 }
            | "++" { VInc1 }
            | "--" { VDec1 }
 
-Statements : Statement { [$1] }
+Statements :  { [] }
            | Statement Statements { $1 : $2 }
 
-ImportDecls : ImportDecl { [$1] }
+ImportDecls :  { [] }
             | ImportDecl ImportDecls { $1 : $2 }
 
-FieldsDecls : FieldsDecl { [$1] }
-            | FieldsDecls FieldsDecl { $2 ++ [$1] }
+FieldsDecls :  { [] }
+            | FieldsDecls FieldsDecl { $1 ++ [$2] }
 
-MethodDecls : MethodDecl { [$1] }
+MethodDecls :  { [] }
             | MethodDecl MethodDecls { $1 : $2 }
 
 Type : int_t { HInt }
@@ -181,14 +185,13 @@ Expr7 : "-" Expr7 { NegExpr $2 }
       | "!" Expr7 { NotExpr $2 }
       | Expr8 { Expr8 $1 }
 
-Expr8 : len Expr9 { LenExpr $2 }
-      | Expr9 { Expr9 $1 }
-
-Expr9 : Location { LocExpr $1 }
+Expr8 : Location { LocExpr $1 }
       | MethodCall { CallExpr $1 }
       | int { IntExpr $1 }
       | bool { BoolExpr $1 }
       | string { StringExpr $1 }
+      | len identifier { LenExpr $2 }
+      | char  { CharExpr $1 }
       | "(" Expr ")" { CuryExpr $2 }
 
 ----------------------------------- Haskell -----------------------------------
@@ -200,7 +203,7 @@ data ImportDecl = ImportDecl String
                   deriving (Show)
 data FieldsDecl = FieldsDecl HType [FieldDecl] deriving (Show)
 data FieldDecl = VarDecl String
-               | ArrayDecl String Int
+               | ArrayDecl String Integer
                deriving (Show)
 data MethodDecl = TMethodDecl HType String [ParamDecl] Block
                 | VMethodDecl String [ParamDecl] Block
@@ -286,15 +289,13 @@ data Expr7 = NegExpr Expr7
            | Expr8 Expr8
            deriving (Show)
 
-data Expr8 = LenExpr Expr9
-           | Expr9 Expr9
-           deriving (Show)
-
-data Expr9 = LocExpr Location
+data Expr8 = LocExpr Location
            | CallExpr MethodCall
-           | IntExpr Int
+           | IntExpr Integer
            | BoolExpr Bool
            | StringExpr String
+           | LenExpr String
+           | CharExpr Char
            | CuryExpr Expr
            deriving (Show)
 

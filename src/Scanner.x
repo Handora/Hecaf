@@ -40,7 +40,7 @@ tokens :-
   -- comment1
   "//".*   ;
   -- comment2(errors)
-  "/*"(.|\n)*"*/";
+  \/\*([^\*]|[\r\n]|(\*+([^\*\/]|[\r\n])))*\*+\/  ;
 
   -- Symbols
   \+= { \posn _ -> scannedToken posn $ Sym "+="}
@@ -56,24 +56,27 @@ tokens :-
   != { \posn _ -> scannedToken posn $ Sym "!="}
   \> { \posn _ -> scannedToken posn $ Sym ">"}
   \< { \posn _ -> scannedToken posn $ Sym "<"}
+  \>= { \posn _ -> scannedToken posn $ Sym ">="}
+  \<= { \posn _ -> scannedToken posn $ Sym "<="}
   = { \posn _ -> scannedToken posn $ Sym "="}
   && { \posn _ -> scannedToken posn $ Sym "&&"}
   \|\| { \posn _ -> scannedToken posn $ Sym "||"}
   \? {\posn _ -> scannedToken posn $ Sym "?"}
   \! {\posn _ -> scannedToken posn $ Sym "!"}
   \; {\posn _ -> scannedToken posn $ Sym ";"}
+  \: {\posn _ -> scannedToken posn $ Sym ":"}
   \, {\posn _ -> scannedToken posn $ Sym ","}
   
   
   -- TODO(Handora): *= and so on
 
   -- string literal
-  \" ((\\ $escapes)|($printable # [\\ \"]))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
+  \" ((\\ $escapes)|($printable # [\\ \" \']))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
 
-  "'" ((\\ $escapes) | ($printable # [\\ \'])) "'" { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
+  "'" ((\\ $escapes) | ($printable # [\\ \' \" ])) "'" { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
 
   -- integer
-  (\+|\-)? $digit+  { \posn s -> scannedToken posn $ IntLiteral $ str2Int s }
+  $digit+  { \posn s -> scannedToken posn $ IntLiteral $ read s }
 
   -- hex integer
   0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral (read s) }
@@ -113,7 +116,7 @@ tokens :-
 -- | A token.
 data Token = BoolLiteral Bool
            | StringLiteral String
-           | IntLiteral Int
+           | IntLiteral Integer
            | CharLiteral Char
            | Identifier String
            | Sym String
@@ -141,8 +144,9 @@ instance Show Token where
   show (Identifier s) = "IDENTIFIER " ++ s
   show LCurly = "{"
   show RCurly = "}"
-  show (BoolLiteral b) = "BOOLLITERAL " ++ show b
-  show (DataType s) = "DATATYPE " ++ show s
+  show (BoolLiteral True) = "BOOLEANLITERAL true"
+  show (BoolLiteral False) = "BOOLEANLITERAL false"
+  show (DataType s) = s
   show Break = "break"
   show Import = "import"
   show Continue = "continue"
@@ -154,8 +158,8 @@ instance Show Token where
   show Len = "len"
   show Void = "void"
   show Class = "class"
-  show (StringLiteral s) = "STRINGLITERAL \"" ++ escapeString s ++ "\""
-  show (CharLiteral c) = "CHARLITERAL '" ++ unescapeString [c] ++ "'"
+  show (StringLiteral s) = "STRINGLITERAL \"" ++ unescapeString s ++ "\""
+  show (CharLiteral c) = "CHARLITERAL '" ++ unescapeChar c ++ "'"
   show (IntLiteral i) = "INTLITERAL " ++ show i
   show (Sym s) = s
   show LBracket = "["
@@ -299,9 +303,18 @@ unescapeString [] = []
 unescapeString ('\n':xs) = '\\' : 'n' : unescapeString xs
 unescapeString ('\t':xs) = '\\' : 't' : unescapeString xs
 unescapeString ('\b':xs) = '\\' : 'b' : unescapeString xs
+unescapeString ('\"':xs) = '\\' : '"' : unescapeString xs
+unescapeString ('\\':xs) = '\\' : '\\' : unescapeString xs
+unescapeString ('\'':xs) = '\\' : '\'' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
 
-str2Int :: String -> Int
-str2Int ('+':s) = read s
-str2Int s = read s
+unescapeChar :: Char -> String
+unescapeChar ('\n') = "\\n"
+unescapeChar ('\t') = "\\t"
+unescapeChar ('\b') = "\\b"
+unescapeChar ('\"') = "\\\""
+unescapeChar ('\\') = "\\\\"
+unescapeChar ('\'') = "\\\'"
+unescapeChar x = [x]
+
 }

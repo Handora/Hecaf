@@ -1,14 +1,3 @@
-{- Main -- main entry point
-Copyright (C) 2013, 2014  Benjamin Barenblat <bbaren@mit.edu>
-
-This file is a part of decafc.
-
-decafc is free software: you can redistribute it and/or modify it under the
-terms of the MIT (X11) License as described in the LICENSE file.
-
-decafc is distributed in the hope that it will be useful, but WITHOUT ANY
-WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
-PARTICULAR PURPOSE.  See the X11 license for more details. -}
 module Main where
 
 import Prelude hiding (readFile)
@@ -115,8 +104,8 @@ parse configuration input = do
   -- If errors occurred, bail out.
   mapM_ (mungeErrorMessage configuration . Left) errors
   -- Otherwise, attempt a parse.
-  void $ mungeErrorMessage configuration $ Parser.parse tokens
+  -- void $ mungeErrorMessage configuration $ Parser.parse tokens
   -- comment the above line and uncomment the following two lines to print out your parse tree
-  --let x = Parser.parse tokens
-  --void $ mungeErrorMessage configuration $ trace (ppShow x) x
+  let x = Parser.parse tokens
+  void $ mungeErrorMessage configuration $ trace (ppShow x) x
   Right []

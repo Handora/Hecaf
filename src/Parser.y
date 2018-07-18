@@ -1,14 +1,3 @@
--- Parser -- Decaf parser                                       -*- haskell -*-
--- Copyright (C) 2013  Benjamin Barenblat <bbaren@mit.edu>
---
--- This file is a part of decafc.
---
--- decafc is free software: you can redistribute it and/or modify it under the
--- terms of the MIT (X11) License as described in the LICENSE file.
---
--- decafc is distributed in the hope that it will be useful, but WITHOUT ANY
--- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
--- FOR A PARTICULAR PURPOSE.  See the X11 license for more details.
 {
 module Parser ( parse
               ) where
@@ -77,6 +66,14 @@ import Scanner (ScannedToken(..), Token(..))
   "<="       { ScannedToken _ _ (Sym "<=") }
 
 %right "?" ":"
+%left "||"
+%left "&&"
+%nonassoc "==" "!="
+%nonassoc ">" "<" ">=" "<="
+%left "+" "-"
+%left "*" "/" "%"
+%left "!"
+%left NEG
 
 %% -------------------------------- Grammar -----------------------------------
 Program : ImportDecls FieldsDecls MethodDecls { Program $1 $2 $3 }
@@ -153,46 +150,32 @@ MethodDecls :  { [] }
 Type : int_t { HInt }
      | bool_t { HBool }
 
-Expr : Expr "?" Expr ":" Expr { TrinaryExpr $1 $3 $5}
-     | Expr1 { Expr1 $1 }
-
-Expr1 : Expr1 "||" Expr2 { OrExpr $1 $3 }
-      | Expr2 { Expr2 $1 }
-
-Expr2 : Expr2 "&&" Expr3 { AndExpr $1 $3 }
-      | Expr3 { Expr3 $1 }
-      
-Expr3 : Expr3 "==" Expr4 { EqualExpr $1 $3 }
-      | Expr3 "!=" Expr4 { NotEqualExpr $1 $3 }
-      | Expr4 { Expr4 $1 }
-
-Expr4 : Expr4 "<" Expr5 { LessExpr $1 $3 }
-      | Expr4 ">" Expr5 { LargerExpr $1 $3 }
-      | Expr4 "<=" Expr5 { LessThanExpr $1 $3 }
-      | Expr4 ">=" Expr5 { LargerThanExpr $1 $3 }
-      | Expr5 { Expr5 $1 }
-
-Expr5 : Expr5 "+" Expr6 { AddExpr $1 $3 }
-      | Expr5 "-" Expr6 { MinusExpr $1 $3 }
-      | Expr6 { Expr6 $1 }
-
-Expr6 : Expr6 "*" Expr7 { MultipleExpr $1 $3 }
-      | Expr6 "/" Expr7 { DivideExpr $1 $3 }
-      | Expr6 "%" Expr7 { ModuloExpr $1 $3 }
-      | Expr7 { Expr7 $1 }
-
-Expr7 : "-" Expr7 { NegExpr $2 }
-      | "!" Expr7 { NotExpr $2 }
-      | Expr8 { Expr8 $1 }
-
-Expr8 : Location { LocExpr $1 }
-      | MethodCall { CallExpr $1 }
-      | int { IntExpr $1 }
-      | bool { BoolExpr $1 }
-      | string { StringExpr $1 }
-      | len identifier { LenExpr $2 }
-      | char  { CharExpr $1 }
-      | "(" Expr ")" { CuryExpr $2 }
+     
+Expr : Location { LocExpr $1 }
+     | MethodCall { CallExpr $1 }
+     | int { IntExpr $1 }
+     | bool { BoolExpr $1 }
+     | string { StringExpr $1 }
+     | char { CharExpr $1 }
+     | len identifier { LenExpr $2 }
+     | "(" Expr ")" { CuryExpr $2 }
+     | "-" Expr %prec NEG { NegExpr $2 }
+     | "!" Expr { NotExpr $2 }
+     | Expr "||" Expr { OrExpr $1 $3 }
+     | Expr "&&" Expr { AndExpr $1 $3 }
+     | Expr "==" Expr { EqualExpr $1 $3 }
+     | Expr "!=" Expr { NotEqualExpr $1 $3 }
+     | Expr "<" Expr { LessExpr $1 $3 }
+     | Expr ">" Expr { LargerExpr $1 $3 }
+     | Expr "<=" Expr { LessThanExpr $1 $3 }
+     | Expr ">=" Expr { LargerThanExpr $1 $3 }
+     | Expr "+" Expr { AddExpr $1 $3 }
+     | Expr "-" Expr { MinusExpr $1 $3 }
+     | Expr "*" Expr { MultipleExpr $1 $3 }
+     | Expr "/" Expr { DivideExpr $1 $3 }
+     | Expr "%" Expr { ModuloExpr $1 $3 }
+     | Expr "?" Expr ":" Expr { TrinaryExpr $1 $3 $5 }
+     
 
 ----------------------------------- Haskell -----------------------------------
 
@@ -203,7 +186,7 @@ data ImportDecl = ImportDecl String
                   deriving (Show)
 data FieldsDecl = FieldsDecl HType [FieldDecl] deriving (Show)
 data FieldDecl = VarDecl String
-               | ArrayDecl String Integer
+               | ArrayDecl String String
                deriving (Show)
 data MethodDecl = TMethodDecl HType String [ParamDecl] Block
                 | VMethodDecl String [ParamDecl] Block
@@ -250,54 +233,30 @@ data HType = HInt
           deriving (Show)
 
 data Expr = TrinaryExpr Expr Expr Expr
-           | Expr1 Expr1
-           deriving (Show)
-
-data Expr1 = OrExpr Expr1 Expr2
-           | Expr2 Expr2
-           deriving (Show)
-
-data Expr2 = AndExpr Expr2 Expr3
-           | Expr3 Expr3
-           deriving (Show)
-
-data Expr3 = EqualExpr Expr3 Expr4
-           | NotEqualExpr Expr3 Expr4
-           | Expr4 Expr4
-           deriving (Show)
-
-data Expr4 = LessExpr Expr4 Expr5
-           | LessThanExpr Expr4 Expr5
-           | LargerExpr Expr4 Expr5
-           | LargerThanExpr Expr4 Expr5
-           | Expr5 Expr5
-           deriving (Show)
-
-data Expr5 = AddExpr Expr5 Expr6
-           | MinusExpr Expr5 Expr6
-           | Expr6 Expr6
-           deriving (Show)
-
-data Expr6 = MultipleExpr Expr6 Expr7
-           | DivideExpr Expr6 Expr7
-           | ModuloExpr Expr6 Expr7
-           | Expr7 Expr7
-           deriving (Show)
-
-data Expr7 = NegExpr Expr7
-           | NotExpr Expr7
-           | Expr8 Expr8
-           deriving (Show)
-
-data Expr8 = LocExpr Location
-           | CallExpr MethodCall
-           | IntExpr Integer
-           | BoolExpr Bool
-           | StringExpr String
-           | LenExpr String
-           | CharExpr Char
-           | CuryExpr Expr
-           deriving (Show)
+          | OrExpr Expr Expr
+          | AndExpr Expr Expr
+          | EqualExpr Expr Expr
+          | NotEqualExpr Expr Expr
+          | LessExpr Expr Expr
+          | LessThanExpr Expr Expr
+          | LargerExpr Expr Expr
+          | LargerThanExpr Expr Expr
+          | AddExpr Expr Expr
+          | MinusExpr Expr Expr
+          | MultipleExpr Expr Expr
+          | DivideExpr Expr Expr
+          | ModuloExpr Expr Expr
+          | NegExpr Expr
+          | NotExpr Expr
+          | LocExpr Location
+          | CallExpr MethodCall
+          | IntExpr String
+          | BoolExpr Bool
+          | StringExpr String
+          | LenExpr String
+          | CharExpr Char
+          | CuryExpr Expr
+          deriving (Show)
 
 parseError :: [ScannedToken] -> Either String a
 parseError [] = Left "unexpected EOF"

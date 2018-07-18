@@ -1,15 +1,3 @@
-
--- Scanner -- Decaf scanner                                     -*- haskell -*-
--- Copyright (C) 2013  Benjamin Barenblat <bbaren@mit.edu>
---
--- This file is a part of decafc.
---
--- decafc is free software: you can redistribute it and/or modify it under the
--- terms of the MIT (X11) License as described in the LICENSE file.
---
--- decafc is distributed in the hope that it will be useful, but WITHOUT ANY
--- WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
--- FOR A PARTICULAR PURPOSE.  See the X11 license for more details.
 {
 {-# OPTIONS_GHC -w #-}
 module Scanner ( ScannedToken(..)
@@ -39,7 +27,7 @@ tokens :-
   $white2+ ;
   -- comment1
   "//".*   ;
-  -- comment2(errors)
+  -- comment2
   \/\*([^\*]|[\r\n]|(\*+([^\*\/]|[\r\n])))*\*+\/  ;
 
   -- Symbols
@@ -65,10 +53,7 @@ tokens :-
   \! {\posn _ -> scannedToken posn $ Sym "!"}
   \; {\posn _ -> scannedToken posn $ Sym ";"}
   \: {\posn _ -> scannedToken posn $ Sym ":"}
-  \, {\posn _ -> scannedToken posn $ Sym ","}
-  
-  
-  -- TODO(Handora): *= and so on
+  \, {\posn _ -> scannedToken posn $ Sym ","}  
 
   -- string literal
   \" ((\\ $escapes)|($printable # [\\ \" \']))*  \"  { \posn s -> scannedToken posn $ StringLiteral $ escapeString $ init $ tail s }
@@ -76,10 +61,10 @@ tokens :-
   "'" ((\\ $escapes) | ($printable # [\\ \' \" ])) "'" { \posn s -> scannedToken posn $ CharLiteral $ (escapeString $ init $ tail s) !! 0 }                               
 
   -- integer
-  $digit+  { \posn s -> scannedToken posn $ IntLiteral $ read s }
+  $digit+  { \posn s -> scannedToken posn $ IntLiteral s }
 
   -- hex integer
-  0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral (read s) }
+  0x ($digit | [a-fA-F])+  { \posn s -> scannedToken posn $ IntLiteral s }
   
 
 -- Keyword Token
@@ -116,7 +101,7 @@ tokens :-
 -- | A token.
 data Token = BoolLiteral Bool
            | StringLiteral String
-           | IntLiteral Integer
+           | IntLiteral String
            | CharLiteral Char
            | Identifier String
            | Sym String
@@ -159,8 +144,8 @@ instance Show Token where
   show Void = "void"
   show Class = "class"
   show (StringLiteral s) = "STRINGLITERAL \"" ++ unescapeString s ++ "\""
-  show (CharLiteral c) = "CHARLITERAL '" ++ unescapeChar c ++ "'"
-  show (IntLiteral i) = "INTLITERAL " ++ show i
+  show (CharLiteral c) = "CHARLITERAL '" ++ unescapeString [c] ++ "'"
+  show (IntLiteral i) = "INTLITERAL " ++ i
   show (Sym s) = s
   show LBracket = "["
   show RBracket = "]"
@@ -308,13 +293,5 @@ unescapeString ('\\':xs) = '\\' : '\\' : unescapeString xs
 unescapeString ('\'':xs) = '\\' : '\'' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
 
-unescapeChar :: Char -> String
-unescapeChar ('\n') = "\\n"
-unescapeChar ('\t') = "\\t"
-unescapeChar ('\b') = "\\b"
-unescapeChar ('\"') = "\\\""
-unescapeChar ('\\') = "\\\\"
-unescapeChar ('\'') = "\\\'"
-unescapeChar x = [x]
 
 }

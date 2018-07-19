@@ -292,6 +292,4 @@ unescapeString ('\"':xs) = '\\' : '"' : unescapeString xs
 unescapeString ('\\':xs) = '\\' : '\\' : unescapeString xs
 unescapeString ('\'':xs) = '\\' : '\'' : unescapeString xs
 unescapeString (x:xs) = x : unescapeString xs
-
-
 }

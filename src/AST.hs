@@ -205,5 +205,3 @@ convertStmt (P.IfStatement e b mb) =
 convertStmt (P.ForStatement hi e e loc vc b) =
   AForStmt (hidentifier2AId id) (convertExpr e) (convertExpr e) (convertVarChanged loc vc) (convertBlock b) 
 
-
-  

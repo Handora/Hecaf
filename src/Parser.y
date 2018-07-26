@@ -1,6 +1,5 @@
 {
-module Parser ( parse
-              ) where
+module Parser where
 
 import Text.Printf (printf)
 

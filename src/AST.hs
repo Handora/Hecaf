@@ -18,6 +18,14 @@ instance Parse2ANode P.MethodDecl where
     AMemberDecl $ AMethodDecl (hType2AType ht)
       (hidentifier2AId hi) (hparams2Aparams params) (convertBlock block)
 
+instance Parse2ANode P.Statement where
+  convert stmt =
+    AStatement $ convertStmt stmt
+
+instance Parse2ANode P.Expr where
+  convert expr =
+    AExpression $ convertExpr expr
+
 data ANode = AExpression AExpression
            | AStatement AStatement
            | AMemberDecl AMemberDecl
@@ -202,6 +210,18 @@ convertStmt (P.MethodCallStatement (P.MethodCall hid args)) =
   ACallStmt $ AMethodCallExpr (hidentifier2AId hid) (map hArgs2AArgs args)
 convertStmt (P.IfStatement e b mb) =
   AIfStmt (convertExpr e) (convertBlock b) (maybe [] convertBlock mb)
-convertStmt (P.ForStatement hi e e loc vc b) =
-  AForStmt (hidentifier2AId id) (convertExpr e) (convertExpr e) (convertVarChanged loc vc) (convertBlock b) 
+convertStmt (P.ForStatement hi e1 e2 loc vc b) =
+  AForStmt (hidentifier2AId hi) (convertExpr e1) (convertExpr e2) (convertVarChanged vc loc) (convertBlock b)
+convertStmt (P.WhileStatement e b) =
+  AWhileStmt (convertExpr e) (convertBlock b)
+convertStmt (P.ReturnStatement me) =
+  AReturnStmt (me >>= return . convertExpr)
+convertStmt (P.BreakStatement) = ABreakStmt
+convertStmt (P.ContinueStatement) = AContinueStmt
 
+
+convertVarChanged :: P.VarChanged -> P.Location -> AAssignStmt
+convertVarChanged (P.VDec e) loc = AIncrementWith (hLoc2ALoc loc) AMinusMinus (convertExpr e)
+convertVarChanged (P.VInc e) loc = AIncrementWith (hLoc2ALoc loc) APlusPlus (convertExpr e)
+convertVarChanged (P.VDec1) loc = AIncrement (hLoc2ALoc loc) AMinusMinus
+convertVarChanged (P.VInc1) loc = AIncrement (hLoc2ALoc loc) APlusPlus

@@ -2,6 +2,10 @@ module AST where
 
 import qualified Parser as P
 
+convert2AST :: P.Program -> AST
+convert2AST (P.Program is fs ms) =
+  AST $ (map convert is) ++ (map convert fs) ++ (map convert ms)
+
 class Parse2ANode a where
   convert :: a -> ANode
 
@@ -25,6 +29,9 @@ instance Parse2ANode P.Statement where
 instance Parse2ANode P.Expr where
   convert expr =
     AExpression $ convertExpr expr
+
+data AST = AST [ANode]
+         deriving (Show)
 
 data ANode = AExpression AExpression
            | AStatement AStatement

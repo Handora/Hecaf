@@ -33,6 +33,7 @@ library
     , Configuration.Types
     , Parser
     , Scanner
+    , AST
   other-modules:
       Paths_Hecaf
   hs-source-dirs:

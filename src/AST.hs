@@ -51,6 +51,14 @@ data ALocation = AIdentifier AId
                | AArray AId AExpression
                deriving (Show)
 
+getALocId :: ALocation -> String
+getALocId (AIdentifier aid) = getId aid
+getALocId (AArray aid _) = getId aid 
+
+getALocAId :: ALocation -> AId
+getALocAId (AIdentifier aid) = aid
+getALocAId (AArray aid _) = aid
+
 data ALiteral = AIntLiteral APos Integer
               | ABoolLiteral APos Bool
               | AStringLiteral APos String
@@ -60,7 +68,7 @@ data ALiteral = AIntLiteral APos Integer
 data APos = APos {
   getLine :: Int,
   getCol :: Int
-  } deriving (Show)
+  } deriving (Show, Eq, Ord)
 
 data ACallExpr = AMethodCallExpr AId [AExpression]
                deriving (Show)
@@ -109,7 +117,7 @@ data AIncrOp = APlusPlus
 data AId = AId {
   getPos :: APos,
   getId :: String
-  } deriving (Show)
+  } deriving (Show, Eq, Ord)
 
 data AMemberDecl = AMethodDecl AType AId [(AType, AId)] [ANode]
                  | AFieldDecl AType [ALocation]

@@ -28,3 +28,11 @@ lookup id (env:rest) =
     Just res -> Just res
     Nothing -> lookup id rest
 lookup id [] = Nothing    
+
+data Type = TBool
+          | TChar
+          | TString
+          | TInt
+          deriving (Show)
+
+

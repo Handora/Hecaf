@@ -5,6 +5,7 @@ import qualified AST as A
 import qualified Data.List as L
 import qualified Data.Map as Map
 import Util
+import Control.Monad
 import Prelude hiding (traverse)
 
 doCheck :: A.AST -> [String]
@@ -47,7 +48,7 @@ checkdeclareBeforeUse :: SemanticCheck
 checkdeclareBeforeUse (A.AExpression (A.ACallExpr (A.AMethodCallExpr aid _ ))) envs =
   case ST.lookup (A.getId aid) envs of
     Nothing -> [report (A.getPos aid) $ (A.getId aid) ++ "No identifier is used before it is declared."]
-    Just 
+    
     
   
 report :: A.APos -> String -> String
@@ -76,3 +77,35 @@ getRepeatError [] = []
 showIdWithPos :: [A.AId] -> String
 showIdWithPos (id:rest) = A.getId id ++ "[" ++ (show $ A.getLine (A.getPos id)) ++ (show $ A.getCol (A.getPos id)) ++ "] " ++ showIdWithPos rest
 showIdWithPos [] = ""
+
+predictType :: A.AExpression -> ST.EnvStack -> Maybe ST.Type
+predictType (A.ALiteral (A.AStringLiteral _ _)) _ = Just ST.TString
+predictType (A.ALiteral (A.ACharLiteral _ _)) _ = Just ST.TChar
+predictType (A.ALiteral (A.AIntLiteral _ _)) _ = Just ST.TInt
+predictType (A.ALiteral (A.ABoolLiteral _ _)) _ = Just ST.TBool
+predictType (A.ABinopExpr (A.APlus _) _ _) _ = Just ST.TInt
+predictType (A.ABinopExpr (A.AMinus _) _ _) _ = Just ST.TInt
+predictType (A.ABinopExpr (A.AMultiple _) _ _) _ = Just ST.TInt
+predictType (A.ABinopExpr (A.ADivide _) _ _) _ = Just ST.TInt
+predictType (A.ABinopExpr (A.ARemiander _) _ _) _ = Just ST.TInt
+predictType (A.ABinopExpr _ _ _) _ = Just ST.TBool
+predictType (A.AUnopExpr (A.ANot _) _) _ = Just ST.TBool
+predictType (A.AUnopExpr (A.ANegative _) _) _ = Just ST.TInt
+predictType (A.ATriopExpr _ _ e1 e2) env =
+  (predictType e1 ) >>= \a -> (predictType e2) >>= \b ->
+    if a == b
+    then return a
+    else Nothing
+predictType (A.ALocation (A.AIdentifier aid)) envs =
+  ST.lookup (A.getId aid) envs >>= return . predict'
+  where predict' (pos, (ST.FieldDesc (ST.PrimitiveDesc atype))) =
+          convertType atype
+predictType (A.ALocation (A.AArray aid _)) _ =
+  maybe TError  (ST.lookup (getId aid) envs)
+predictType (A.ALen _) _ = TInt  
+predictType (A.ACallExpr (A.AMethodCallExpr aid _)) envs =
+  maybe TError   (ST.lookup (getId aid) envs)
+
+convertType :: A.AType -> ST.Type
+convertType (A.ABool _) = ST.TBool
+convertType (A.AInt _) = ST.TInt

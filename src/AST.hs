@@ -46,7 +46,7 @@ data AExpression = ALiteral ALiteral
                  | ALocation ALocation
                  | ALen AId
                  deriving (Show)
-
+  
 data ALocation = AIdentifier AId
                | AArray AId AExpression
                deriving (Show)
